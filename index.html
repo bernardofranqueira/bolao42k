@@ -12,8 +12,8 @@
 <meta name="theme-color" content="#0f0f0f">
 <meta name="description" content="Bolão da Maratona do Rio 2025 — palpite no tempo dos seus amigos!">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="BOLÃO.png">
-<link rel="icon" type="image/png" href="BOLÃO.png">
+<link rel="apple-touch-icon" href="bolao.png">
+<link rel="icon" type="image/png" href="bolao.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -217,8 +217,7 @@ function render() {
 function renderLogin() {
   return `
   <div id="login-screen">
-    <div class="login-logo">BOLÃO<br/>42K</div>
-    <div class="login-tagline">Maratona do Rio 2025</div>
+    <img src="bolao.png" style="width:240px;height:240px;object-fit:contain;margin-bottom:24px" alt="Bolão 42K"/>
     <div class="login-form" id="login-form">
       ${STATE.isLogin ? '' : `
       <div class="role-row">
@@ -625,27 +624,8 @@ async function confirmarPRs(runnerId, pr5, pr10, pr21) {
   const tabEl = document.getElementById('tab-perfil');
   if (tabEl) tabEl.innerHTML = renderPerfil();
 }
-  const pr5 = document.getElementById('pr-5k')?.value?.trim();
-  const pr10 = document.getElementById('pr-10k')?.value?.trim();
-  const pr21 = parseInt(document.getElementById('pr-21k')?.value)||null;
-  const p = STATE.profile;
 
-  if (runnerId) {
-    // Atualiza corredor existente
-    const { error } = await sb.from('corredores').update({ pr_5k:pr5, pr_10k:pr10, pr_21k:pr21 }).eq('id', runnerId);
-    if (error) { toast('Erro ao salvar PRs', true); return; }
-  } else {
-    // Cria novo corredor vinculado a este usuário
-    const clr = COLORS[STATE.runners.length % COLORS.length];
-    const { error } = await sb.from('corredores').insert({ name: p.name, color: clr, pr_5k:pr5, pr_10k:pr10, pr_21k:pr21 });
-    if (error) { toast('Erro ao salvar PRs', true); return; }
-  }
-  await loadRunners();
-  toast('PRs salvos! ✓');
-  // Atualiza tab perfil
-  const tabEl = document.getElementById('tab-perfil');
-  if (tabEl) tabEl.innerHTML = renderPerfil();
-}
+async function adminAddRunner() {
   const name = document.getElementById('a-name')?.value?.trim();
   if (!name) { toast('Informe o nome', true); return; }
   const pr_5k = document.getElementById('a-p5')?.value?.trim();
