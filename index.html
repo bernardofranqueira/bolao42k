@@ -344,6 +344,9 @@ function renderRanking() {
 function renderPerfil() {
   const p = STATE.profile;
   const myPalpites = STATE.palpites;
+  const isCorredor = p?.role === 'corredor';
+  // Encontra o registro do corredor vinculado a este usuário (pelo nome)
+  const myRunner = STATE.runners.find(r => r.name === p?.name);
   return `
   <div class="profile-header" style="margin:-18px -18px 18px;padding:24px 18px;background:var(--bg2);border-bottom:1px solid var(--bg3);text-align:center">
     <div class="av" style="background:${p?.color||'#7cf'};width:68px;height:68px;font-size:26px;margin:0 auto 10px">${ini(p?.name||'?')}</div>
@@ -354,14 +357,44 @@ function renderPerfil() {
       ${p?.role==='apostador'?'<span class="badge badge-apostador">APOSTADOR</span>':''}
     </div>
   </div>
+
+  ${isCorredor ? `
+  <div class="stitle">Meus PRs via Strava</div>
+  <div class="card" style="margin-bottom:14px">
+    ${myRunner?.pr_5k ? `
+    <div style="background:#0a1a0a;border:1px solid #2a4a2a;border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">✓ PRs extraídos do Strava</div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span style="color:var(--muted)">5K</span><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700">${myRunner.pr_5k}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span style="color:var(--muted)">10K</span><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700">${myRunner.pr_10k||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span style="color:var(--muted)">21K</span><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700">${myRunner.pr_21k ? Math.floor(myRunner.pr_21k/60)+'h'+String(myRunner.pr_21k%60).padStart(2,'0')+'m' : '—'}</span></div>
+      ${myRunner.pr_21k ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #2a4a2a"><span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Previsão 42K</span><span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--accent)">${riegel(myRunner.pr_21k)}</span></div>` : ''}
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">Quer atualizar? Sobe um novo print do Strava</div>
+    ` : `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Sobe um print da tela de <strong style="color:var(--text)">Previsões de Corrida</strong> do Strava — a IA extrai seus PRs automaticamente!</div>
+    `}
+    <div id="strava-upload-area" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s" onclick="document.getElementById('strava-file').click()">
+      <div style="font-size:32px;margin-bottom:8px">📱</div>
+      <div style="font-size:14px;color:var(--muted)">Toca aqui para selecionar o print</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:4px">Screenshot do Strava → Previsões de corrida</div>
+    </div>
+    <input type="file" id="strava-file" accept="image/*" style="display:none" onchange="analisarStrava(this, '${myRunner?.id||''}')"/>
+    <div id="strava-loading" style="display:none;text-align:center;padding:16px;color:var(--muted);font-size:13px">
+      <div style="margin-bottom:8px">🤖 Analisando seu print...</div>
+      <div style="width:100%;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden"><div id="strava-bar" style="height:100%;background:var(--accent);width:0%;transition:width 2s ease"></div></div>
+    </div>
+    <div id="strava-preview" style="display:none;margin-top:10px"></div>
+  </div>
+  ` : ''}
+
   <div class="stat-grid">
     <div class="stat-box"><div class="stat-num">${STATE.runners.length}</div><div class="stat-lbl">Corredores</div></div>
     <div class="stat-box"><div class="stat-num">${myPalpites.length}</div><div class="stat-lbl">Palpites</div></div>
   </div>
   ${myPalpites.length > 0 ? `
   <div class="stitle">Meus palpites</div>
-  ${myPalpites.map(p => {
-    const r = STATE.runners.find(x=>x.id===p.corredor_id);
+  ${myPalpites.map(pal => {
+    const r = STATE.runners.find(x=>x.id===pal.corredor_id);
     if (!r) return '';
     return `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center">
@@ -369,7 +402,7 @@ function renderPerfil() {
         <div class="av" style="background:${r.color||'#888'};width:32px;height:32px;font-size:12px">${ini(r.name)}</div>
         <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700">${r.name}</span>
       </div>
-      <span style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;color:var(--accent)">${fmtTime(p.tempo_h,p.tempo_m,p.tempo_s)}</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;color:var(--accent)">${fmtTime(pal.tempo_h,pal.tempo_m,pal.tempo_s)}</span>
     </div>`;
   }).join('')}
   ` : `<div class="empty"><div class="empty-icon">🎯</div>Você ainda não fez nenhum palpite.</div>`}
@@ -441,6 +474,10 @@ async function doLogin() {
       options: { data: { name, role: STATE.loginRole, color: roleColor } }
     });
     if (error) { errEl.textContent = error.message; errEl.classList.remove('hidden'); btn.textContent='CRIAR CONTA'; btn.disabled=false; return; }
+    // Se for corredor, cria registro na tabela corredores
+    if (STATE.loginRole === 'corredor' && data.user) {
+      await sb.from('corredores').insert({ name, color: roleColor, pr_5k: null, pr_10k: null, pr_21k: null });
+    }
   }
   await init();
 }
@@ -494,7 +531,121 @@ async function savePalpite(corredor_id) {
   if (tabEl) tabEl.innerHTML = renderCorredores();
 }
 
-async function adminAddRunner() {
+async function analisarStrava(input, runnerId) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Mostrar preview da imagem
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    const mediaType = file.type;
+
+    // UI loading
+    document.getElementById('strava-upload-area').style.display = 'none';
+    const loading = document.getElementById('strava-loading');
+    loading.style.display = 'block';
+    setTimeout(() => { const bar = document.getElementById('strava-bar'); if(bar) bar.style.width='85%'; }, 100);
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: base64 }
+              },
+              {
+                type: 'text',
+                text: `Analise este print do Strava e extraia os tempos de corrida. Retorne APENAS um JSON válido, sem markdown, sem texto extra, no formato:
+{"pr_5k": "22:30", "pr_10k": "47:15", "pr_21k": 105}
+Onde pr_21k é em minutos (número inteiro).
+Se não encontrar um valor, use null.
+Se a imagem não for do Strava ou não tiver tempos de corrida, retorne: {"erro": "Imagem não reconhecida"}`
+              }
+            ]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '';
+
+      let parsed;
+      try { parsed = JSON.parse(text.trim()); } catch { parsed = { erro: 'Não consegui ler os dados' }; }
+
+      loading.style.display = 'none';
+
+      if (parsed.erro) {
+        toast(parsed.erro, true);
+        document.getElementById('strava-upload-area').style.display = 'block';
+        return;
+      }
+
+      // Mostrar preview dos dados extraídos
+      const preview = document.getElementById('strava-preview');
+      preview.style.display = 'block';
+      preview.innerHTML = `
+        <div style="background:#0a1a0a;border:1px solid #2a4a2a;border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--green);letter-spacing:1px;margin-bottom:10px">🤖 IA extraiu esses dados:</div>
+          ${parsed.pr_5k ? `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px"><span style="color:var(--muted)">5K</span><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px">${parsed.pr_5k}</span></div>` : ''}
+          ${parsed.pr_10k ? `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px"><span style="color:var(--muted)">10K</span><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px">${parsed.pr_10k}</span></div>` : ''}
+          ${parsed.pr_21k ? `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px"><span style="color:var(--muted)">21K</span><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px">${Math.floor(parsed.pr_21k/60)}h${String(parsed.pr_21k%60).padStart(2,'0')}m</span></div>` : ''}
+          ${parsed.pr_21k ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #2a4a2a"><span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Previsão 42K</span><span style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--accent)">${riegel(parsed.pr_21k)}</span></div>` : ''}
+        </div>
+        <button class="btn" onclick="confirmarPRs('${runnerId}', '${parsed.pr_5k||''}', '${parsed.pr_10k||''}', ${parsed.pr_21k||null})">CONFIRMAR E SALVAR</button>
+        <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="location.reload()">Tentar outro print</button>
+      `;
+
+    } catch (err) {
+      loading.style.display = 'none';
+      toast('Erro ao analisar imagem', true);
+      document.getElementById('strava-upload-area').style.display = 'block';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function confirmarPRs(runnerId, pr5, pr10, pr21) {
+  const p = STATE.profile;
+  if (runnerId) {
+    await sb.from('corredores').update({ pr_5k: pr5||null, pr_10k: pr10||null, pr_21k: pr21 }).eq('id', runnerId);
+  } else {
+    const clr = COLORS[STATE.runners.length % COLORS.length];
+    await sb.from('corredores').insert({ name: p.name, color: clr, pr_5k: pr5||null, pr_10k: pr10||null, pr_21k: pr21 });
+  }
+  await loadRunners();
+  toast('PRs salvos! ✓');
+  const tabEl = document.getElementById('tab-perfil');
+  if (tabEl) tabEl.innerHTML = renderPerfil();
+}
+  const pr5 = document.getElementById('pr-5k')?.value?.trim();
+  const pr10 = document.getElementById('pr-10k')?.value?.trim();
+  const pr21 = parseInt(document.getElementById('pr-21k')?.value)||null;
+  const p = STATE.profile;
+
+  if (runnerId) {
+    // Atualiza corredor existente
+    const { error } = await sb.from('corredores').update({ pr_5k:pr5, pr_10k:pr10, pr_21k:pr21 }).eq('id', runnerId);
+    if (error) { toast('Erro ao salvar PRs', true); return; }
+  } else {
+    // Cria novo corredor vinculado a este usuário
+    const clr = COLORS[STATE.runners.length % COLORS.length];
+    const { error } = await sb.from('corredores').insert({ name: p.name, color: clr, pr_5k:pr5, pr_10k:pr10, pr_21k:pr21 });
+    if (error) { toast('Erro ao salvar PRs', true); return; }
+  }
+  await loadRunners();
+  toast('PRs salvos! ✓');
+  // Atualiza tab perfil
+  const tabEl = document.getElementById('tab-perfil');
+  if (tabEl) tabEl.innerHTML = renderPerfil();
+}
   const name = document.getElementById('a-name')?.value?.trim();
   if (!name) { toast('Informe o nome', true); return; }
   const pr_5k = document.getElementById('a-p5')?.value?.trim();
