@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bolão 42K — Maratona do Rio</title>
+<!-- PWA: salvar na tela inicial como app -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bolão 42K">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="description" content="Bolão da Maratona do Rio 2025 — palpite no tempo dos seus amigos!">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f0f0f;--bg2:#161616;--bg3:#1e1e1e;
+  --border:#2a2a2a;--accent:#f5e642;--accent2:#e8d730;
+  --text:#f0ece0;--muted:#888;--faint:#444;
+  --green:#4CAF90;--blue:#79a;--red:#f87;
+  --sab:env(safe-area-inset-bottom);
+}
+html,body{height:100%;background:#111;-webkit-text-size-adjust:100%}
+body{font-family:'Barlow',sans-serif;color:var(--text);overscroll-behavior:none;touch-action:manipulation}
+input,select{font-size:16px}
+.app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;position:relative}
+
+/* UTILS */
+.bc{font-family:'Barlow Condensed',sans-serif}
+.hidden{display:none!important}
+input,button{font-family:'Barlow',sans-serif}
+
+/* LOGIN */
+#login-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;background:var(--bg)}
+.login-logo{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--accent);line-height:.9;text-align:center;margin-bottom:6px}
+.login-tagline{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:48px}
+.login-form{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+.role-row{display:flex;gap:8px}
+.role-btn{flex:1;padding:11px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:14px;cursor:pointer;transition:all .2s}
+.role-btn.active{background:var(--accent);color:#0a0a0a;border-color:var(--accent);font-weight:600}
+.inp{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:14px;font-size:15px;color:var(--text);outline:none;width:100%;transition:border .2s}
+.inp:focus{border-color:var(--accent)}
+.btn{background:var(--accent);color:#0a0a0a;border:none;border-radius:8px;padding:15px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;width:100%;transition:opacity .2s}
+.btn:hover{opacity:.87}
+.btn:active{opacity:.7}
+.btn-ghost{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:6px;width:100%;text-align:center}
+.btn-ghost:hover{color:var(--text)}
+.login-toggle{display:flex;gap:4px;margin-top:8px;justify-content:center;font-size:13px;color:var(--muted)}
+.login-toggle span{color:var(--accent);cursor:pointer;text-decoration:underline}
+.error-msg{background:#3a1010;border:1px solid #5a2020;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--red);text-align:center}
+
+/* HEADER */
+.header{background:var(--bg);border-bottom:1px solid var(--bg3);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+.header-logo{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:10px}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#0a0a0a;flex-shrink:0;cursor:pointer}
+
+/* NAV */
+.bottom-nav{background:var(--bg);border-top:1px solid var(--bg3);display:flex;padding:6px 0;padding-bottom:calc(6px + var(--sab));position:sticky;bottom:0;z-index:20}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;border:none;background:transparent;color:var(--faint);font-size:10px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:color .2s;min-height:52px}
+.nav-item.active{color:var(--accent)}
+.nav-icon{font-size:22px;line-height:1}
+
+/* PAGE */
+.page{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px}
+.page.hidden{display:none}
+
+/* SECTION TITLE */
+.stitle{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--bg3)}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:9px}
+.card.hl{border-color:var(--accent);background:#1a1900}
+.card.clickable{cursor:pointer;transition:border-color .2s,background .2s}
+.card.clickable:hover{border-color:var(--accent);background:#1a1900}
+.card.clickable:active{opacity:.8}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.badge-admin{background:#2a1a00;color:var(--accent);border:1px solid #4a3a00}
+.badge-corredor{background:#1a2a1a;color:var(--green);border:1px solid #2a4a2a}
+.badge-apostador{background:#1a1a2a;color:var(--blue);border:1px solid #2a2a4a}
+
+/* RUNNER CARD */
+.runner-card{display:flex;align-items:center;gap:12px}
+.runner-info{flex:1;min-width:0}
+.runner-name{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;color:var(--text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.runner-prs{font-size:11px;color:var(--faint);margin-top:3px}
+.runner-pred{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--accent);text-align:right;white-space:nowrap}
+.runner-pred-label{font-size:9px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;text-align:right}
+.palpite-tag{font-size:11px;color:var(--accent);margin-top:3px}
+.result-tag{font-size:11px;color:var(--green);margin-top:1px}
+
+/* PALPITE DETAIL */
+.back-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;margin-bottom:14px;padding:0;font-family:'Barlow',sans-serif}
+.back-btn:hover{color:var(--text)}
+.pr-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a;font-size:13px}
+.pr-label{color:var(--muted)}
+.pr-val{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700}
+.previsao-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;margin-top:2px}
+.time-inputs{display:flex;align-items:flex-end;gap:6px;margin-bottom:12px}
+.time-group{display:flex;flex-direction:column;gap:5px;flex:1}
+.time-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;text-align:center}
+.time-inp{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:10px 4px;font-size:26px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--accent);text-align:center;outline:none;width:100%}
+.time-inp:focus{border-color:var(--accent)}
+.time-sep{font-size:26px;font-weight:700;color:var(--faint);padding-bottom:10px}
+
+/* RANKING */
+.rank-card{display:flex;align-items:center;gap:12px}
+.rank-num{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;width:28px;text-align:center;color:var(--faint)}
+.rank-num.r1{color:var(--accent)}
+.rank-num.r2{color:#aaa}
+.rank-num.r3{color:#c87}
+.rank-pts{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--accent)}
+.rank-pts-lbl{font-size:9px;color:var(--faint);letter-spacing:1px;text-align:right}
+.tag-me{font-size:9px;background:var(--accent);color:#0a0a0a;padding:2px 5px;border-radius:3px;font-weight:700;margin-left:6px;vertical-align:middle}
+
+/* PROFILE */
+.profile-header{background:var(--bg2);border-bottom:1px solid var(--bg3);padding:24px 18px;text-align:center}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.stat-num{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;color:var(--accent)}
+.stat-lbl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+/* ADMIN */
+.admin-inp{background:#1a1a1a;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:14px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--accent);width:90px;text-align:center;outline:none}
+.admin-inp:focus{border-color:var(--accent)}
+.btn-sm{background:var(--accent);color:#0a0a0a;border:none;border-radius:6px;padding:7px 12px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.btn-sm:active{opacity:.7}
+.btn-danger{background:#3a1010;color:var(--red);border:1px solid #5a2020;border-radius:6px;padding:7px 10px;font-size:12px;cursor:pointer}
+.admin-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1a1a1a}
+.admin-row:last-child{border-bottom:none}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--muted);font-size:13px;letter-spacing:1px;text-transform:uppercase}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:var(--accent);color:#0a0a0a;padding:10px 22px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;z-index:999;white-space:nowrap;animation:toastIn .25s ease;pointer-events:none}
+.toast.error{background:#5a1010;color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
+.empty-icon{font-size:36px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading" id="init-loading"><div class="spinner"></div>Carregando...</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://tfzqsdlfomwmievcpfit.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fzeIz_Z96SKduCQYuaJuvw_teUa1suF';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLORS = ['#f5e642','#4CAF90','#7986CB','#FF8A65','#CE93D8','#7CF','#FA7','#F79'];
+let STATE = { user: null, profile: null, runners: [], palpites: [], tab: 'corredores', isLogin: true, loginRole: 'apostador' };
+
+// ───── UTILS ─────
+function ini(name) { return (name||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase(); }
+function riegel(pr21) {
+  if (!pr21) return '—';
+  const mins = pr21 * 2.09;
+  const h = Math.floor(mins/60), m = Math.floor(mins%60), s = Math.round((mins*60)%60);
+  return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function fmtTime(h,m,s) { return `${h}h${String(m).padStart(2,'0')}m${String(s).padStart(2,'0')}s`; }
+function color(i) { return COLORS[i % COLORS.length]; }
+let toastTimer;
+function toast(msg, isError=false) {
+  clearTimeout(toastTimer);
+  const el = document.getElementById('toast-el');
+  if (el) el.remove();
+  const t = document.createElement('div');
+  t.className = 'toast' + (isError?' error':'');
+  t.id = 'toast-el';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  toastTimer = setTimeout(()=>t.remove(), 2500);
+}
+
+// ───── SUPABASE ─────
+async function loadRunners() {
+  const { data } = await sb.from('corredores').select('*').order('created_at');
+  STATE.runners = data || [];
+}
+async function loadPalpites() {
+  if (!STATE.user) return;
+  const { data } = await sb.from('palpites').select('*').eq('user_id', STATE.user.id);
+  STATE.palpites = data || [];
+}
+async function loadProfile() {
+  if (!STATE.user) return;
+  const { data } = await sb.from('profiles').select('*').eq('id', STATE.user.id).single();
+  STATE.profile = data;
+}
+function getPalpite(corredor_id) {
+  return STATE.palpites.find(p => p.corredor_id === corredor_id);
+}
+
+// ───── RENDER ─────
+function render() {
+  const app = document.getElementById('app');
+  if (!STATE.user) { app.innerHTML = renderLogin(); bindLogin(); return; }
+  app.innerHTML = renderApp();
+  bindApp();
+}
+
+function renderLogin() {
+  return `
+  <div id="login-screen">
+    <div class="login-logo">BOLÃO<br/>42K</div>
+    <div class="login-tagline">Maratona do Rio 2025</div>
+    <div class="login-form" id="login-form">
+      ${STATE.isLogin ? '' : `
+      <div class="role-row">
+        <button class="role-btn ${STATE.loginRole==='apostador'?'active':''}" onclick="setRole('apostador')">Apostador</button>
+        <button class="role-btn ${STATE.loginRole==='corredor'?'active':''}" onclick="setRole('corredor')">Corredor</button>
+      </div>
+      ${STATE.isLogin ? '' : `<input class="inp" id="inp-name" placeholder="Seu nome completo" type="text"/>`}
+      `}
+      <input class="inp" id="inp-email" placeholder="E-mail" type="email" autocomplete="email"/>
+      <input class="inp" id="inp-pass" placeholder="Senha (mín. 6 caracteres)" type="password" autocomplete="${STATE.isLogin?'current-password':'new-password'}"/>
+      <div id="login-error" class="error-msg hidden"></div>
+      <button class="btn" id="login-btn">${STATE.isLogin ? 'ENTRAR' : 'CRIAR CONTA'}</button>
+      <div class="login-toggle">
+        ${STATE.isLogin ? `Não tem conta? <span onclick="toggleMode()">Criar agora</span>` : `Já tem conta? <span onclick="toggleMode()">Entrar</span>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderApp() {
+  const p = STATE.profile;
+  const isAdmin = p?.role === 'admin';
+  return `
+  <div class="header">
+    <span class="header-logo">🏃 BOLÃO 42K</span>
+    <div class="header-right">
+      <span style="font-size:12px;color:var(--muted)">${(p?.name||'').split(' ')[0]}</span>
+      ${isAdmin ? '<span class="badge badge-admin">ADMIN</span>' : ''}
+      ${p?.role==='corredor' ? '<span class="badge badge-corredor">CORREDOR</span>' : ''}
+      <div class="av" style="background:${p?.color||'#7cf'};width:32px;height:32px;font-size:13px" onclick="goTab('perfil')">${ini(p?.name||'?')}</div>
+    </div>
+  </div>
+  <div id="tab-corredores" class="page ${STATE.tab==='corredores'?'':'hidden'}">${renderCorredores()}</div>
+  <div id="tab-ranking" class="page ${STATE.tab==='ranking'?'':'hidden'}">${renderRanking()}</div>
+  <div id="tab-perfil" class="page ${STATE.tab==='perfil'?'':'hidden'}">${renderPerfil()}</div>
+  ${isAdmin ? `<div id="tab-admin" class="page ${STATE.tab==='admin'?'':'hidden'}">${renderAdmin()}</div>` : ''}
+  <div class="bottom-nav">
+    <button class="nav-item ${STATE.tab==='corredores'?'active':''}" onclick="goTab('corredores')"><span class="nav-icon">🏃</span>Corredores</button>
+    <button class="nav-item ${STATE.tab==='ranking'?'active':''}" onclick="goTab('ranking')"><span class="nav-icon">🏆</span>Ranking</button>
+    <button class="nav-item ${STATE.tab==='perfil'?'active':''}" onclick="goTab('perfil')"><span class="nav-icon">👤</span>Perfil</button>
+    ${isAdmin ? `<button class="nav-item ${STATE.tab==='admin'?'active':''}" onclick="goTab('admin')"><span class="nav-icon">⚙️</span>Admin</button>` : ''}
+  </div>`;
+}
+
+function renderCorredores() {
+  if (!STATE.runners.length) return `<div class="empty"><div class="empty-icon">🏃</div>Nenhum corredor cadastrado ainda.</div>`;
+  return `
+  <div class="stitle">Palpite no tempo final de cada corredor</div>
+  ${STATE.runners.map(r => {
+    const p = getPalpite(r.id);
+    const pred = riegel(r.pr_21k);
+    return `
+    <div class="card clickable runner-card" onclick="openPalpite('${r.id}')">
+      <div class="av" style="background:${r.color||'#888'};width:42px;height:42px;font-size:16px">${ini(r.name)}</div>
+      <div class="runner-info">
+        <div class="runner-name">${r.name}</div>
+        <div class="runner-prs">5K ${r.pr_5k||'—'} · 10K ${r.pr_10k||'—'} · 21K ${r.pr_21k ? Math.floor(r.pr_21k/60)+'h'+String(r.pr_21k%60).padStart(2,'0')+'m' : '—'}</div>
+        ${p ? `<div class="palpite-tag">✓ ${fmtTime(p.tempo_h,p.tempo_m,p.tempo_s)}</div>` : ''}
+        ${r.resultado ? `<div class="result-tag">🏁 ${r.resultado}</div>` : ''}
+      </div>
+      <div>
+        <div class="runner-pred">${pred}</div>
+        <div class="runner-pred-label">previsão</div>
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+
+function renderPalpiteDetail(runnerId) {
+  const r = STATE.runners.find(x=>x.id===runnerId);
+  if (!r) return '';
+  const pred = riegel(r.pr_21k);
+  const p = getPalpite(r.id);
+  const h = p?.tempo_h ?? 4, m = p?.tempo_m ?? 30, s = p?.tempo_s ?? 0;
+  return `
+  <div class="page" id="palpite-detail" style="flex:1;overflow-y:auto;padding:18px">
+    <button class="back-btn" onclick="closePalpite()">← Voltar</button>
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bg3)">
+        <div class="av" style="background:${r.color||'#888'};width:46px;height:46px;font-size:18px">${ini(r.name)}</div>
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700">${r.name}</div>
+          <div style="font-size:12px;color:var(--muted)">Maratona do Rio 2025</div>
+        </div>
+      </div>
+      <div class="stitle">Histórico de PRs</div>
+      <div class="pr-row"><span class="pr-label">5K</span><span class="pr-val">${r.pr_5k||'—'}</span></div>
+      <div class="pr-row"><span class="pr-label">10K</span><span class="pr-val">${r.pr_10k||'—'}</span></div>
+      <div class="pr-row"><span class="pr-label">Meia 21K</span><span class="pr-val">${r.pr_21k ? Math.floor(r.pr_21k/60)+'h'+String(r.pr_21k%60).padStart(2,'0')+'m' : '—'}</span></div>
+      <div class="previsao-row">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Previsão Riegel 42K</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:900;color:var(--accent)">${pred}</span>
+      </div>
+    </div>
+    ${r.resultado ? `
+    <div style="background:#0a1a0a;border:1px solid #2a4a2a;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--green);font-size:13px">🏁 Resultado oficial</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--green)">${r.resultado}</span>
+    </div>` : ''}
+    <div class="card">
+      <div class="stitle">Seu palpite</div>
+      <div class="time-inputs">
+        <div class="time-group"><span class="time-label">Horas</span><input class="time-inp" id="tp-h" type="tel" inputmode="numeric" pattern="[0-9]*" min="2" max="9" value="${h}"/></div>
+        <span class="time-sep">:</span>
+        <div class="time-group"><span class="time-label">Min</span><input class="time-inp" id="tp-m" type="tel" inputmode="numeric" pattern="[0-9]*" min="0" max="59" value="${m}"/></div>
+        <span class="time-sep">:</span>
+        <div class="time-group"><span class="time-label">Seg</span><input class="time-inp" id="tp-s" type="tel" inputmode="numeric" pattern="[0-9]*" min="0" max="59" value="${s}"/></div>
+      </div>
+      <button class="btn" id="save-palpite-btn" onclick="savePalpite('${r.id}')">SALVAR PALPITE</button>
+    </div>
+  </div>`;
+}
+
+function renderRanking() {
+  const hasResults = STATE.runners.some(r=>r.resultado);
+  // Calcular pontos por usuário (simplificado — usando palpites do estado atual)
+  return `
+  ${!hasResults ? `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center;color:var(--muted);font-size:13px">Ranking disponível após os resultados da prova 🏁</div>` : ''}
+  <div class="stitle">Classificação geral</div>
+  <div class="empty"><div class="empty-icon">🏆</div>O ranking será calculado após o admin lançar os resultados.</div>`;
+}
+
+function renderPerfil() {
+  const p = STATE.profile;
+  const myPalpites = STATE.palpites;
+  return `
+  <div class="profile-header" style="margin:-18px -18px 18px;padding:24px 18px;background:var(--bg2);border-bottom:1px solid var(--bg3);text-align:center">
+    <div class="av" style="background:${p?.color||'#7cf'};width:68px;height:68px;font-size:26px;margin:0 auto 10px">${ini(p?.name||'?')}</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900">${p?.name||''}</div>
+    <div style="margin-top:6px">
+      ${p?.role==='admin'?'<span class="badge badge-admin">ADMIN</span>':''}
+      ${p?.role==='corredor'?'<span class="badge badge-corredor">CORREDOR</span>':''}
+      ${p?.role==='apostador'?'<span class="badge badge-apostador">APOSTADOR</span>':''}
+    </div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-num">${STATE.runners.length}</div><div class="stat-lbl">Corredores</div></div>
+    <div class="stat-box"><div class="stat-num">${myPalpites.length}</div><div class="stat-lbl">Palpites</div></div>
+  </div>
+  ${myPalpites.length > 0 ? `
+  <div class="stitle">Meus palpites</div>
+  ${myPalpites.map(p => {
+    const r = STATE.runners.find(x=>x.id===p.corredor_id);
+    if (!r) return '';
+    return `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="av" style="background:${r.color||'#888'};width:32px;height:32px;font-size:12px">${ini(r.name)}</div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700">${r.name}</span>
+      </div>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;color:var(--accent)">${fmtTime(p.tempo_h,p.tempo_m,p.tempo_s)}</span>
+    </div>`;
+  }).join('')}
+  ` : `<div class="empty"><div class="empty-icon">🎯</div>Você ainda não fez nenhum palpite.</div>`}
+  <button class="btn-ghost" style="margin-top:24px;color:var(--red)" onclick="logout()">Sair da conta</button>`;
+}
+
+function renderAdmin() {
+  return `
+  <div class="stitle">Adicionar corredor</div>
+  <div class="card" style="margin-bottom:12px">
+    <input class="inp" id="a-name" placeholder="Nome completo" style="margin-bottom:8px"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <input class="inp" id="a-p5" placeholder="PR 5K" style="font-size:13px;padding:9px 8px"/>
+      <input class="inp" id="a-p10" placeholder="PR 10K" style="font-size:13px;padding:9px 8px"/>
+      <input class="inp" id="a-p21" placeholder="21K min" style="font-size:13px;padding:9px 8px"/>
+    </div>
+    <button class="btn" onclick="adminAddRunner()">ADICIONAR CORREDOR</button>
+  </div>
+  <div class="stitle">Lançar resultados</div>
+  <div class="card" style="margin-bottom:12px">
+    ${STATE.runners.map(r=>`
+    <div class="admin-row">
+      <div class="av" style="background:${r.color||'#888'};width:30px;height:30px;font-size:11px">${ini(r.name)}</div>
+      <div style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${r.name.split(' ')[0]}</div>
+      <input class="admin-inp" id="res-${r.id}" placeholder="4:30:00" value="${r.resultado||''}"/>
+      <button class="btn-sm" onclick="adminSaveResult('${r.id}')">✓</button>
+    </div>`).join('')}
+  </div>
+  <div class="stitle">Corredores cadastrados</div>
+  <div class="card">
+    ${STATE.runners.map(r=>`
+    <div class="admin-row">
+      <div class="av" style="background:${r.color||'#888'};width:30px;height:30px;font-size:11px">${ini(r.name)}</div>
+      <div style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${r.name}</div>
+      <button class="btn-danger" onclick="adminRemoveRunner('${r.id}')">Remover</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ───── HANDLERS ─────
+function setRole(r) { STATE.loginRole = r; render(); }
+function toggleMode() { STATE.isLogin = !STATE.isLogin; render(); }
+function goTab(t) { STATE.tab = t; render(); }
+
+function bindLogin() {
+  document.getElementById('login-btn')?.addEventListener('click', doLogin);
+  document.getElementById('inp-pass')?.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+}
+function bindApp() {}
+
+async function doLogin() {
+  const email = document.getElementById('inp-email')?.value?.trim();
+  const pass = document.getElementById('inp-pass')?.value;
+  const errEl = document.getElementById('login-error');
+  if (!email || !pass) { errEl.textContent='Preencha e-mail e senha'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  const btn = document.getElementById('login-btn');
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  if (STATE.isLogin) {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = 'E-mail ou senha incorretos'; errEl.classList.remove('hidden'); btn.textContent='ENTRAR'; btn.disabled=false; return; }
+  } else {
+    const name = document.getElementById('inp-name')?.value?.trim() || email.split('@')[0];
+    const roleColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+    const { data, error } = await sb.auth.signUp({
+      email, password: pass,
+      options: { data: { name, role: STATE.loginRole, color: roleColor } }
+    });
+    if (error) { errEl.textContent = error.message; errEl.classList.remove('hidden'); btn.textContent='CRIAR CONTA'; btn.disabled=false; return; }
+  }
+  await init();
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  STATE.user = null; STATE.profile = null; STATE.palpites = [];
+  STATE.isLogin = true;
+  render();
+}
+
+function openPalpite(runnerId) {
+  const app = document.getElementById('app');
+  // Esconde tabs, mostra detalhe
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  document.querySelector('.bottom-nav')?.classList.add('hidden');
+  const detail = document.createElement('div');
+  detail.id = 'palpite-wrapper';
+  detail.style.cssText = 'flex:1;display:flex;flex-direction:column;overflow:hidden';
+  detail.innerHTML = renderPalpiteDetail(runnerId);
+  app.appendChild(detail);
+}
+function closePalpite() {
+  document.getElementById('palpite-wrapper')?.remove();
+  document.querySelectorAll('.page').forEach(p=>{
+    if (p.id === `tab-${STATE.tab}`) p.classList.remove('hidden');
+  });
+  document.querySelector('.bottom-nav')?.classList.remove('hidden');
+}
+
+async function savePalpite(corredor_id) {
+  const h = parseInt(document.getElementById('tp-h')?.value||0);
+  const m = parseInt(document.getElementById('tp-m')?.value||0);
+  const s = parseInt(document.getElementById('tp-s')?.value||0);
+  const btn = document.getElementById('save-palpite-btn');
+  btn.textContent = '...'; btn.disabled = true;
+
+  const existing = getPalpite(corredor_id);
+  let error;
+  if (existing) {
+    ({ error } = await sb.from('palpites').update({ tempo_h:h, tempo_m:m, tempo_s:s }).eq('id', existing.id));
+  } else {
+    ({ error } = await sb.from('palpites').insert({ user_id: STATE.user.id, corredor_id, tempo_h:h, tempo_m:m, tempo_s:s }));
+  }
+  if (error) { toast('Erro ao salvar', true); btn.textContent='SALVAR PALPITE'; btn.disabled=false; return; }
+  await loadPalpites();
+  toast('Palpite salvo! ✓');
+  closePalpite();
+  // Atualiza tab corredores
+  const tabEl = document.getElementById('tab-corredores');
+  if (tabEl) tabEl.innerHTML = renderCorredores();
+}
+
+async function adminAddRunner() {
+  const name = document.getElementById('a-name')?.value?.trim();
+  if (!name) { toast('Informe o nome', true); return; }
+  const pr_5k = document.getElementById('a-p5')?.value?.trim();
+  const pr_10k = document.getElementById('a-p10')?.value?.trim();
+  const pr_21k = parseInt(document.getElementById('a-p21')?.value)||null;
+  const clr = COLORS[STATE.runners.length % COLORS.length];
+  const { error } = await sb.from('corredores').insert({ name, color:clr, pr_5k, pr_10k, pr_21k });
+  if (error) { toast('Erro ao adicionar', true); return; }
+  await loadRunners();
+  toast('Corredor adicionado!');
+  render();
+}
+
+async function adminSaveResult(rid) {
+  const val = document.getElementById(`res-${rid}`)?.value?.trim();
+  if (!val) return;
+  const { error } = await sb.from('corredores').update({ resultado: val }).eq('id', rid);
+  if (error) { toast('Erro ao salvar', true); return; }
+  await loadRunners();
+  toast('Resultado salvo! ✓');
+  // Atualiza admin tab
+  const tabEl = document.getElementById('tab-admin');
+  if (tabEl) tabEl.innerHTML = renderAdmin();
+}
+
+async function adminRemoveRunner(rid) {
+  if (!confirm('Remover este corredor?')) return;
+  await sb.from('palpites').delete().eq('corredor_id', rid);
+  await sb.from('corredores').delete().eq('id', rid);
+  await loadRunners();
+  await loadPalpites();
+  toast('Corredor removido');
+  render();
+}
+
+// ───── INIT ─────
+async function init() {
+  const { data: { user } } = await sb.auth.getUser();
+  STATE.user = user;
+  if (user) {
+    await Promise.all([loadProfile(), loadRunners(), loadPalpites()]);
+    // Se admin não existe ainda, checar e setar
+    if (STATE.profile && !STATE.profile.role) {
+      STATE.profile.role = 'apostador';
+    }
+  }
+  render();
+}
+
+// Escuta mudanças de auth
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    STATE.user = session.user;
+    Promise.all([loadProfile(), loadRunners(), loadPalpites()]).then(render);
+  } else if (event === 'SIGNED_OUT') {
+    STATE.user = null; STATE.profile = null; STATE.palpites = [];
+    render();
+  }
+});
+
+// Start
+init();
+</script>
+</body>
+</html>
